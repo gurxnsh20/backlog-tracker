@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEE Command Center — Backlog & Live Sync OS</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<style type="text/tailwindcss">
+  :root { color-scheme: dark; }
+  html, body { @apply h-full; }
+  body { @apply bg-[#07090E] text-slate-200 font-sans antialiased; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  .card { @apply bg-[#111520]/80 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.15] rounded-2xl shadow-2xl transition-all duration-300; }
+  .card-static { @apply bg-[#111520]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl; }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #818cf8, #c084fc 60%, #f0abfc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glow-border {
+    position: relative;
+  }
+  .glow-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 1rem;
+    padding: 1px;
+    background: linear-gradient(120deg, rgba(99,102,241,0.6), rgba(168,85,247,0.3), rgba(56,189,248,0.5));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .pill { @apply w-9 h-9 flex items-center justify-center rounded-lg text-[11px] font-mono font-semibold transition-all duration-150 select-none; }
+  .pill-cleared { @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/40; }
+  .pill-pending { @apply bg-white/5 text-slate-500 border border-white/10 hover:bg-white/10 hover:text-slate-300; }
+  .pill-next { @apply bg-indigo-500/10 text-indigo-200 border-2 border-indigo-400/70; animation: pulseRing 1.8s ease-in-out infinite; }
+  @keyframes pulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(129,140,248,0.45); }
+    50% { box-shadow: 0 0 0 5px rgba(129,140,248,0); }
+  }
+
+  .mode-btn { @apply flex-1 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 transition-all duration-150 text-center; }
+  .mode-btn-active { @apply text-white shadow-lg; background: linear-gradient(135deg, #6366f1, #a855f7); box-shadow: 0 6px 20px -6px rgba(99,102,241,0.55); }
+
+  .btn-primary { @apply px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-150; background: linear-gradient(135deg, #6366f1, #a855f7); }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:active { filter: brightness(0.95); }
+
+  .btn-ghost { @apply px-3 py-2 rounded-lg text-sm font-medium text-slate-300 border border-white/10 bg-white/[0.03] transition-all duration-150 hover:bg-white/[0.08]; }
+  .btn-danger-ghost { @apply px-3 py-2 rounded-lg text-sm font-medium text-rose-400 border border-rose-500/20 bg-rose-500/[0.04] transition-all duration-150 hover:bg-rose-500/10; }
+
+  .field-label { @apply block text-xs font-medium text-slate-400 mb-1.5; }
+  .field-input { @apply w-full rounded-lg bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-colors duration-150; }
+  .field-input:focus { @apply border-indigo-400/50 bg-white/[0.06]; }
+
+  .tab-btn { @apply px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 transition-colors duration-150 whitespace-nowrap flex items-center gap-1.5; }
+  .tab-btn-active { @apply bg-white/10 text-slate-100; }
+
+  .badge { @apply text-[10px] font-semibold px-2 py-0.5 rounded-md tracking-wide font-mono; }
+
+  .toast { @apply card-static px-4 py-3 rounded-xl text-sm text-slate-100 shadow-2xl flex items-center gap-2.5; animation: toast-in 0.28s cubic-bezier(0.16,1,0.3,1); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  @keyframes ring-in { from { stroke-dashoffset: var(--ring-full); } to { stroke-dashoffset: var(--ring-offset); } }
+  .ring-progress { animation: ring-in 1.1s cubic-bezier(0.16,1,0.3,1) forwards; }
+
+  @keyframes modal-in { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-in { animation: modal-in 0.2s cubic-bezier(0.16,1,0.3,1); }
+
+  input[type="range"] { accent-color: #a855f7; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body class="min-h-full">
+
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+  <div class="absolute -top-32 -left-32 w-[520px] h-[520px] bg-indigo-500/10 rounded-full blur-[120px]"></div>
+  <div class="absolute top-1/4 -right-40 w-[520px] h-[520px] bg-purple-500/10 rounded-full blur-[120px]"></div>
+  <div class="absolute bottom-0 left-1/3 w-[480px] h-[480px] bg-emerald-500/5 rounded-full blur-[120px]"></div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl card-static flex items-center justify-center shrink-0">
+        <i data-lucide="orbit" class="w-5 h-5 text-violet-300"></i>
+      </div>
+      <div>
+        <h1 class="font-sans font-extrabold text-lg sm:text-xl text-slate-50 leading-tight tracking-tight">JEE Command Center</h1>
+        <p class="text-xs text-slate-500">Backlog & Live Sync OS</p>
+      </div>
+    </div>
+    <button id="reset-default-btn" type="button" class="btn-ghost flex items-center gap-1.5 text-xs">
+      <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset to Default Data
+    </button>
+  </header>
+
+  <!-- Feature 1: Hero Action Bar -->
+  <section id="hero-action-bar" class="glow-border card-static p-5 sm:p-6 mb-5"></section>
+
+  <!-- Bento row 1: stats + live sync -->
+  <section class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-5">
+    <div id="stats-ring-card" class="lg:col-span-2 card p-5 sm:p-6"></div>
+    <div id="live-sync-card" class="lg:col-span-3 card p-5 sm:p-6"></div>
+  </section>
+
+  <!-- Bento row 2: today log + daily adder -->
+  <section class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-5">
+    <div id="today-log-card" class="lg:col-span-2 card p-5 sm:p-6"></div>
+    <div id="daily-adder-card" class="lg:col-span-3 card p-5 sm:p-6"></div>
+  </section>
+
+  <!-- Feature 3: Planner -->
+  <section id="planner-card" class="card p-5 sm:p-6 mb-6"></section>
+
+  <!-- Feature 4: Chapters -->
+  <section>
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <h2 class="font-sans font-bold text-base text-slate-100">Chapter Backlog</h2>
+      <button id="add-chapter-btn" type="button" class="btn-primary flex items-center gap-1.5 text-xs">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add New Chapter
+      </button>
+    </div>
+    <div id="filter-tabs" class="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1"></div>
+    <div id="chapters-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  </section>
+
+  <footer class="text-center text-xs text-slate-600 mt-10 pb-4">
+    Everything here is stored only on this device.
+  </footer>
+</div>
+
+<!-- Add/Edit Chapter Modal -->
+<div id="chapter-modal" class="hidden fixed inset-0 z-40 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+  <div class="modal-in card-static rounded-2xl w-full max-w-sm p-5 sm:p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="chapter-modal-title" class="font-sans font-bold text-slate-100">Add New Chapter</h3>
+      <button type="button" data-action="close-chapter-modal" class="text-slate-500 hover:text-slate-200 transition-colors duration-150">
+        <i data-lucide="x" class="w-4.5 h-4.5"></i>
+      </button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="field-label" for="cm-subject">Subject</label>
+        <select id="cm-subject" class="field-input">
+          <option value="physics">Physics</option>
+          <option value="pchem">Physical Chemistry</option>
+          <option value="ichem">Inorganic Chemistry</option>
+          <option value="ochem">Organic Chemistry</option>
+          <option value="maths">Mathematics</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="cm-name">Chapter name</label>
+        <input id="cm-name" type="text" class="field-input" placeholder="e.g. Thermodynamics" maxlength="60">
+      </div>
+      <div>
+        <label class="field-label" id="cm-total-label" for="cm-total">Pending lectures</label>
+        <input id="cm-total" type="number" min="1" max="200" class="field-input" placeholder="e.g. 8">
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-300 pt-1">
+        <input id="cm-ongoing" type="checkbox" class="w-4 h-4 rounded accent-violet-500">
+        Ongoing chapter (gets new live lectures Mon–Sat)
+      </label>
+    </div>
+    <p id="chapter-modal-error" class="hidden text-xs text-rose-400 mt-3"></p>
+    <div class="flex gap-2.5 mt-5">
+      <button type="button" data-action="close-chapter-modal" class="btn-ghost flex-1">Cancel</button>
+      <button type="button" data-action="save-chapter" id="save-chapter-btn" class="btn-primary flex-1">Add Chapter</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end max-w-[90vw]"></div>
+
+<script>
+/* =========================================================
+   Constants
+========================================================= */
+const STORAGE_KEY = 'jee_command_center_v1';
+
+const SUBJECTS = {
+  physics: { label: 'Physics',        short: 'Physics',  badge: 'bg-sky-500/15 text-sky-300 border border-sky-400/25',       barFrom: 'from-sky-400',     barTo: 'to-sky-600',     tabActive: 'bg-sky-500/15 text-sky-300',       dot: 'bg-sky-400' },
+  pchem:   { label: 'Physical Chem',  short: 'P. Chem',  badge: 'bg-orange-500/15 text-orange-300 border border-orange-400/25', barFrom: 'from-orange-400',  barTo: 'to-orange-600',  tabActive: 'bg-orange-500/15 text-orange-300', dot: 'bg-orange-400' },
+  ichem:   { label: 'Inorganic Chem', short: 'I. Chem',  badge: 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/25', barFrom: 'from-emerald-400', barTo: 'to-emerald-600', tabActive: 'bg-emerald-500/15 text-emerald-300', dot: 'bg-emerald-400' },
+  ochem:   { label: 'Organic Chem',   short: 'O. Chem',  badge: 'bg-rose-500/15 text-rose-300 border border-rose-400/25',     barFrom: 'from-rose-400',    barTo: 'to-rose-600',    tabActive: 'bg-rose-500/15 text-rose-300',     dot: 'bg-rose-400' },
+  maths:   { label: 'Mathematics',    short: 'Maths',    badge: 'bg-violet-500/15 text-violet-300 border border-violet-400/25', barFrom: 'from-violet-400', barTo: 'to-violet-600',  tabActive: 'bg-violet-500/15 text-violet-300', dot: 'bg-violet-400' },
+};
+const SUBJECT_ORDER = ['physics', 'pchem', 'ichem', 'ochem', 'maths'];
+const CONFETTI_COLORS = ['#38bdf8', '#fb923c', '#34d399', '#fb7185', '#a78bfa'];
+
+/* =========================================================
+   Default data
+========================================================= */
+function range(a, b) { const out = []; for (let i = a; i <= b; i++) out.push(i); return out; }
+function mkChapter(subject, name, total, cleared, isOngoing) {
+  return { id: uid(), subject, name, totalLectures: total, clearedLectures: [...cleared], isOngoing: !!isOngoing };
+}
+
+function defaultState() {
+  return {
+    chapters: [
+      mkChapter('physics', 'Motion in a Plane', 17, [1,2,3,4,5,6,7,8,9], false),
+      mkChapter('physics', 'Laws of Motion', 21, [1,2], false),
+      mkChapter('physics', 'Circular Motion', 8, [], false),
+      mkChapter('physics', 'Work, Energy and Power', 8, [], true),
+      mkChapter('pchem', 'States of Matter', 5, [1,2], false),
+      mkChapter('pchem', 'Thermodynamics', 8, [], true),
+      mkChapter('ichem', 'Chemical Bonding', 26, [1,2,3,4,5,6,7], false),
+      mkChapter('maths', 'Set Theory (CH-01)', 8, range(1,8), false),
+      mkChapter('maths', 'Basic Mathematics (CH-02)', 21, range(1,21), false),
+      mkChapter('maths', 'Quadratic Equations (CH-03)', 14, range(1,14), false),
+      mkChapter('maths', 'Sequence and Series (CH-04)', 12, [1,2,3], false),
+      mkChapter('maths', 'Trigonometric Functions (CH-05)', 13, [], false),
+      mkChapter('maths', 'Trigonometric Equation (CH-06)', 7, [], false),
+      mkChapter('maths', 'Relations and Functions (CH-07)', 5, [], false),
+      mkChapter('maths', 'Permutations and Combinations (CH-08)', 11, [], false),
+      mkChapter('maths', 'Binomial Theorem (CH-09)', 4, [], true),
+    ],
+    settings: { scenario: 'parallel', weekdayPace: 2, sundayPace: 4, holidaysUpcoming: 0 },
+    logsByDate: {},
+    additionsByDate: {},
+    ui: { filter: 'all' },
+  };
+}
+
+/* =========================================================
+   Persistence
+========================================================= */
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const base = defaultState();
+    if (!Array.isArray(parsed.chapters)) return base;
+    return {
+      chapters: parsed.chapters,
+      settings: { ...base.settings, ...(parsed.settings || {}) },
+      logsByDate: parsed.logsByDate || {},
+      additionsByDate: parsed.additionsByDate || {},
+      ui: { ...base.ui, ...(parsed.ui || {}) },
+    };
+  } catch (e) {
+    console.error('Could not read saved data, starting fresh.', e);
+    return defaultState();
+  }
+}
+
+let state = loadState();
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Could not save data.', e);
+    showToast('Could not save — browser storage may be full.', 'error');
+  }
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+/* =========================================================
+   Date helpers
+========================================================= */
+function todayStr(d = new Date()) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d; }
+function formatLongDate(date) { return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function formatWeekday(date) { return date.toLocaleDateString('en-IN', { weekday: 'long' }); }
+function prefersReducedMotion() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+
+/* =========================================================
+   Chapter math
+========================================================= */
+function pendingCount(ch) { return ch.totalLectures - ch.clearedLectures.length; }
+function nextPendingNumber(ch) {
+  for (let i = 1; i <= ch.totalLectures; i++) if (!ch.clearedLectures.includes(i)) return i;
+  return null;
+}
+function totalPendingAll() { return state.chapters.reduce((s, c) => s + pendingCount(c), 0); }
+function totalClearedAll() { return state.chapters.reduce((s, c) => s + c.clearedLectures.length, 0); }
+function pendingBySubject(subjectKey) {
+  return state.chapters.filter(c => c.subject === subjectKey).reduce((s, c) => s + pendingCount(c), 0);
+}
+function chaptersOf(subjectKey) { return state.chapters.filter(c => c.subject === subjectKey); }
+
+/* =========================================================
+   Live-sync simulation
+========================================================= */
+function isOffDay(date, budget) {
+  if (date.getDay() === 0) return true;
+  if (budget.remaining > 0) { budget.remaining -= 1; return true; }
+  return false;
+}
+function simulateClear({ scenario, weekdayPace, sundayPace, holidaysUpcoming, backlogStart }) {
+  if (backlogStart <= 0) return { achievable: true, days: 0, date: new Date() };
+  if (weekdayPace <= 0 && sundayPace <= 0) return { achievable: false, days: null, date: null };
+
+  const today = new Date();
+  const budget = { remaining: holidaysUpcoming };
+  let backlog = backlogStart;
+  const MAX_DAYS = 3650;
+
+  for (let i = 1; i <= MAX_DAYS; i++) {
+    const cursor = addDays(today, i);
+    const off = isOffDay(cursor, budget);
+    if (scenario === 'parallel') {
+      backlog -= off ? sundayPace : weekdayPace;
+    } else {
+      const added = off ? 0 : 2;
+      backlog += added - (off ? sundayPace : weekdayPace);
+    }
+    if (backlog <= 0) return { achievable: true, days: i, date: cursor };
+  }
+  return { achievable: false, days: null, date: null };
+}
+
+/* =========================================================
+   Chapter mutations
+========================================================= */
+function clearLecture(chapterId, lectureNum, { log = true, confettiBurst = false } = {}) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  if (ch.clearedLectures.includes(lectureNum)) return;
+  ch.clearedLectures.push(lectureNum);
+  if (log) {
+    const entry = { id: uid(), chapterId: ch.id, chapterName: ch.name, subject: ch.subject, lectureNum, time: Date.now() };
+    const key = todayStr();
+    state.logsByDate[key] = state.logsByDate[key] || [];
+    state.logsByDate[key].push(entry);
+  }
+  saveState();
+  render();
+  if (confettiBurst) fireConfetti();
+}
+function unclearLecture(chapterId, lectureNum) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  ch.clearedLectures = ch.clearedLectures.filter(n => n !== lectureNum);
+  const key = todayStr();
+  if (state.logsByDate[key]) {
+    state.logsByDate[key] = state.logsByDate[key].filter(e => !(e.chapterId === chapterId && e.lectureNum === lectureNum));
+  }
+  saveState();
+  render();
+}
+function toggleLecturePill(chapterId, lectureNum) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  if (ch.clearedLectures.includes(lectureNum)) {
+    unclearLecture(chapterId, lectureNum);
+  } else {
+    clearLecture(chapterId, lectureNum, { log: true, confettiBurst: false });
+    showToast(`Logged L${lectureNum} · ${ch.name}`);
+  }
+}
+function clearNextForChapter(chapterId) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  const next = nextPendingNumber(ch);
+  if (next === null) { showToast('This chapter is already fully cleared', 'info'); return; }
+  clearLecture(chapterId, next, { log: true, confettiBurst: false });
+  showToast(`Logged L${next} · ${ch.name}`);
+}
+function addLecturesToChapter(chapterId, count) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  ch.totalLectures += count;
+  const key = todayStr();
+  state.additionsByDate[key] = state.additionsByDate[key] || [];
+  state.additionsByDate[key].push({ id: uid(), type: 'lectures', chapterId: ch.id, chapterName: ch.name, count });
+  saveState();
+  render();
+  showToast(`+${count} added to ${ch.name}`);
+}
+function logHolidayToday() {
+  const key = todayStr();
+  state.additionsByDate[key] = state.additionsByDate[key] || [];
+  state.additionsByDate[key].push({ id: uid(), type: 'holiday' });
+  saveState();
+  render();
+  showToast('Marked today as a holiday — 0 new classes');
+}
+function deleteChapter(chapterId) {
+  const ch = state.chapters.find(c => c.id === chapterId);
+  if (!ch) return;
+  if (!confirm(`Delete "${ch.name}" and all its lectures? This can't be undone.`)) return;
+  state.chapters = state.chapters.filter(c => c.id !== chapterId);
+  saveState();
+  render();
+}
+
+/* =========================================================
+   Confetti
+========================================================= */
+function fireConfetti() {
+  if (prefersReducedMotion()) return;
+  if (typeof confetti !== 'function') return;
+  try {
+    confetti({ particleCount: 55, spread: 65, startVelocity: 35, origin: { y: 0.35 }, colors: CONFETTI_COLORS, scalar: 0.9 });
+  } catch (e) { console.error('Confetti failed', e); }
+}
+
+/* =========================================================
+   Toasts
+========================================================= */
+function showToast(message, kind = 'success') {
+  const container = document.getElementById('toast-container');
+  const icon = kind === 'error' ? 'alert-circle' : kind === 'info' ? 'info' : 'check-circle-2';
+  const color = kind === 'error' ? 'text-rose-400' : kind === 'info' ? 'text-indigo-300' : 'text-emerald-400';
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 ${color} shrink-0"></i><span>${escapeHtml(message)}</span>`;
+  container.appendChild(el);
+  lucide.createIcons();
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    setTimeout(() => el.remove(), 260);
+  }, 2800);
+}
+function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+/* =========================================================
+   Render: Hero Action Bar (Feature 1)
+========================================================= */
+function renderHeroBar() {
+  const el = document.getElementById('hero-action-bar');
+  const subjectsWithPending = SUBJECT_ORDER.filter(k => pendingBySubject(k) > 0);
+
+  if (subjectsWithPending.length === 0) {
+    el.innerHTML = `
+      <div class="flex items-center gap-3">
+        <i data-lucide="party-popper" class="w-6 h-6 text-emerald-400 shrink-0"></i>
+        <div>
+          <p class="font-sans font-bold text-slate-100">Every lecture is cleared!</p>
+          <p class="text-xs text-slate-500 mt-0.5">Add a new chapter or wait for tomorrow's live classes.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <p class="text-xs font-semibold text-indigo-300 mb-3 tracking-wide">Aaj maine konsa lecture dekha?</p>
+    <div class="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 items-end">
+      <div>
+        <label class="field-label" for="watch-subject">Subject</label>
+        <select id="watch-subject" class="field-input">
+          ${subjectsWithPending.map(k => `<option value="${k}">${SUBJECTS[k].label}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="field-label" for="watch-chapter">Chapter</label>
+        <select id="watch-chapter" class="field-input"></select>
+      </div>
+      <div>
+        <label class="field-label" for="watch-lecture">Lecture</label>
+        <select id="watch-lecture" class="field-input font-mono"></select>
+      </div>
+      <button type="button" id="watch-submit-btn" class="btn-primary h-[42px] flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i> Mark Watched Today
+      </button>
+    </div>
+  `;
+  lucide.createIcons();
+  populateWatchChapterOptions();
+  populateWatchLectureOptions();
+}
+function populateWatchChapterOptions() {
+  const subjSel = document.getElementById('watch-subject');
+  const chapSel = document.getElementById('watch-chapter');
+  if (!subjSel || !chapSel) return;
+  const chapters = chaptersOf(subjSel.value).filter(c => pendingCount(c) > 0);
+  chapSel.innerHTML = chapters.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+function populateWatchLectureOptions() {
+  const chapSel = document.getElementById('watch-chapter');
+  const lecSel = document.getElementById('watch-lecture');
+  if (!chapSel || !lecSel) return;
+  const ch = state.chapters.find(c => c.id === chapSel.value);
+  if (!ch) { lecSel.innerHTML = ''; return; }
+  const pendingNums = [];
+  for (let i = 1; i <= ch.totalLectures; i++) if (!ch.clearedLectures.includes(i)) pendingNums.push(i);
+  lecSel.innerHTML = pendingNums.map(n => `<option value="${n}">L${n}</option>`).join('');
+}
+
+/* =========================================================
+   Render: Stats ring + Live sync hero
+========================================================= */
+function renderStatsRing() {
+  const el = document.getElementById('stats-ring-card');
+  const backlog = totalPendingAll();
+  const cleared = totalClearedAll();
+  const total = backlog + cleared;
+  const pct = total === 0 ? 100 : Math.round((cleared / total) * 100);
+  const r = 52, circumference = 2 * Math.PI * r, offset = circumference - (pct / 100) * circumference;
+
+  el.innerHTML = `
+    <div class="flex items-center gap-5 h-full">
+      <div class="relative w-28 h-28 shrink-0">
+        <svg viewBox="0 0 120 120" class="w-28 h-28 -rotate-90">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#818cf8"/>
+              <stop offset="100%" stop-color="#c084fc"/>
+            </linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+          <circle cx="60" cy="60" r="${r}" fill="none" stroke="url(#ringGrad)" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="${circumference}"
+            style="--ring-full:${circumference}; --ring-offset:${offset};" class="ring-progress"/>
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <span class="font-mono text-xl font-bold text-slate-50">${pct}%</span>
+        </div>
+      </div>
+      <div class="flex-1 grid grid-cols-2 gap-3">
+        <div>
+          <p class="text-2xl font-mono font-bold text-slate-50">${backlog}</p>
+          <p class="text-xs text-slate-500 mt-0.5">Pending lectures</p>
+        </div>
+        <div>
+          <p class="text-2xl font-mono font-bold text-slate-50">${cleared}</p>
+          <p class="text-xs text-slate-500 mt-0.5">Cleared</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function renderLiveSyncHero() {
+  const el = document.getElementById('live-sync-card');
+  const backlog = totalPendingAll();
+
+  if (backlog === 0) {
+    el.innerHTML = `
+      <div class="flex flex-col justify-center h-full">
+        <p class="text-xs font-medium text-emerald-400 mb-1.5">Fully synced</p>
+        <p class="font-sans text-2xl sm:text-3xl font-extrabold text-slate-50 leading-tight">You're live-synced! 🎉</p>
+        <p class="text-sm text-slate-400 mt-2">No backlog left — attend today's classes as usual.</p>
+      </div>`;
+    return;
+  }
+  const { settings } = state;
+  const result = simulateClear({ scenario: settings.scenario, weekdayPace: settings.weekdayPace, sundayPace: settings.sundayPace, holidaysUpcoming: settings.holidaysUpcoming, backlogStart: backlog });
+
+  el.innerHTML = result.achievable ? `
+    <div class="flex flex-col justify-center h-full">
+      <p class="text-xs font-medium text-slate-400 mb-1.5">Estimated live-sync date</p>
+      <p class="font-sans text-2xl sm:text-3xl font-extrabold text-gradient leading-tight">${formatLongDate(result.date)}</p>
+      <p class="text-sm text-slate-400 mt-2 font-mono">${result.days} day${result.days === 1 ? '' : 's'} from now · ${formatWeekday(result.date)}</p>
+    </div>` : `
+    <div class="flex flex-col justify-center h-full">
+      <p class="text-xs font-medium text-amber-400 mb-1.5">Not on track yet</p>
+      <p class="font-sans text-xl sm:text-2xl font-bold text-slate-50 leading-snug">At this pace your backlog won't clear.</p>
+      <p class="text-sm text-slate-400 mt-2">Raise your pace in the calculator below.</p>
+    </div>`;
+}
+
+/* =========================================================
+   Render: Today's Study Log (Feature 1)
+========================================================= */
+function renderTodayLog() {
+  const el = document.getElementById('today-log-card');
+  const entries = state.logsByDate[todayStr()] || [];
+
+  if (entries.length === 0) {
+    el.innerHTML = `
+      <h3 class="font-sans font-bold text-sm text-slate-100 mb-3 flex items-center gap-1.5"><i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> Today's Study Log</h3>
+      <p class="text-sm text-slate-500">No lectures logged yet today — use the bar above.</p>`;
+    return;
+  }
+
+  const byChapter = {};
+  entries.forEach(e => {
+    byChapter[e.chapterId] = byChapter[e.chapterId] || { name: e.chapterName, items: [] };
+    byChapter[e.chapterId].items.push(e);
+  });
+
+  const groupsHtml = Object.entries(byChapter).map(([chapterId, group]) => `
+    <div class="flex items-start gap-2 flex-wrap">
+      <span class="text-xs text-slate-400 mt-1.5 shrink-0">${escapeHtml(group.name)}</span>
+      <div class="flex flex-wrap gap-1">
+        ${group.items.map(e => `
+          <button type="button" data-action="undo-log" data-log-id="${e.id}" data-chapter="${e.chapterId}" data-lecture="${e.lectureNum}"
+            class="text-[11px] font-mono px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-rose-500/15 hover:text-rose-300 hover:border-rose-500/30 transition-colors duration-150 flex items-center gap-1"
+            title="Undo">
+            L${e.lectureNum} <i data-lucide="x" class="w-2.5 h-2.5"></i>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <h3 class="font-sans font-bold text-sm text-slate-100 mb-3 flex items-center gap-1.5"><i data-lucide="flame" class="w-4 h-4 text-orange-400"></i> Today: Watched ${entries.length} Lecture${entries.length === 1 ? '' : 's'}</h3>
+    <div class="space-y-2.5 max-h-40 overflow-y-auto pr-1">${groupsHtml}</div>
+  `;
+}
+
+/* =========================================================
+   Render: Daily New Lecture Adder (Feature 2)
+========================================================= */
+function renderDailyAdder() {
+  const el = document.getElementById('daily-adder-card');
+  const ongoing = state.chapters.filter(c => c.isOngoing);
+  const todaysAdditions = state.additionsByDate[todayStr()] || [];
+
+  const chipHtml = todaysAdditions.map(a => a.type === 'holiday'
+    ? `<span class="badge bg-slate-500/15 text-slate-300">Holiday — 0 new classes</span>`
+    : `<span class="badge bg-indigo-500/15 text-indigo-300">+${a.count} → ${escapeHtml(a.chapterName)}</span>`
+  ).join(' ');
+
+  el.innerHTML = `
+    <h3 class="font-sans font-bold text-sm text-slate-100 mb-1">Daily New Lecture Adder</h3>
+    <p class="text-xs text-slate-500 mb-3">Aaj kaunsi nayi class add hui backlog mein? (2 classes/day Mon–Sat)</p>
+    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end mb-3">
+      <div class="flex-1">
+        <label class="field-label" for="adder-chapter">Chapter</label>
+        <select id="adder-chapter" class="field-input">
+          ${ongoing.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+          <option value="__new__">+ New chapter…</option>
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" id="adder-plus1-btn" class="btn-ghost text-xs whitespace-nowrap">+1 New Lecture</button>
+        <button type="button" id="adder-plus2-btn" class="btn-ghost text-xs whitespace-nowrap">+2 Today's Classes</button>
+      </div>
+    </div>
+    <button type="button" id="adder-holiday-btn" class="btn-ghost text-xs w-full flex items-center justify-center gap-1.5">
+      <i data-lucide="sun" class="w-3.5 h-3.5"></i> Today was Sunday / Holiday (0 New Classes)
+    </button>
+    ${chipHtml ? `<div class="flex flex-wrap gap-1.5 mt-3">${chipHtml}</div>` : ''}
+  `;
+}
+
+/* =========================================================
+   Render: Planner (Feature 3)
+========================================================= */
+function renderPaceCard(label, weekdayPace, sundayPace, backlog, highlight) {
+  const result = simulateClear({ scenario: state.settings.scenario, weekdayPace, sundayPace, holidaysUpcoming: state.settings.holidaysUpcoming, backlogStart: backlog });
+  const ring = highlight ? 'border-indigo-400/40 bg-indigo-500/[0.06]' : 'border-white/10 bg-white/[0.02]';
+  const body = backlog === 0
+    ? `<p class="text-sm text-emerald-400 font-medium mt-2">Already synced</p>`
+    : result.achievable
+      ? `<p class="text-sm text-slate-100 font-mono font-semibold mt-2">${result.days} day${result.days === 1 ? '' : 's'}</p>
+         <p class="text-xs text-slate-500 mt-0.5 font-mono">${formatLongDate(result.date)}</p>`
+      : `<p class="text-xs text-amber-400 mt-2 leading-snug">Backlog keeps growing at this pace</p>`;
+  return `<div class="rounded-xl border ${ring} p-4"><p class="text-xs font-medium text-slate-400">${label}</p>${body}</div>`;
+}
+
+function renderPlanner() {
+  const el = document.getElementById('planner-card');
+  const { scenario, weekdayPace, sundayPace, holidaysUpcoming } = state.settings;
+  const backlog = totalPendingAll();
+  const isParallel = scenario === 'parallel';
+
+  el.innerHTML = `
+    <h2 class="font-sans font-bold text-base text-slate-100 mb-4">Live Catch-up Simulator</h2>
+    <div class="flex gap-1 card-static rounded-xl p-1 mb-5">
+      <button type="button" data-action="set-scenario" data-scenario="parallel" class="mode-btn ${isParallel ? 'mode-btn-active' : ''}">Parallel Mode</button>
+      <button type="button" data-action="set-scenario" data-scenario="sequential" class="mode-btn ${!isParallel ? 'mode-btn-active' : ''}">Pure Sequential Mode</button>
+    </div>
+    <p class="text-xs text-slate-500 -mt-3 mb-5 leading-relaxed">
+      ${isParallel
+        ? "You attend both daily live classes (so no new backlog is added) and additionally clear backlog lectures on top."
+        : "You skip live classes for now and watch the backlog in order. New live lectures (2/day, Mon–Sat) keep joining the pile while you catch up."}
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+      <div>
+        <label class="field-label" for="weekday-pace-slider">Weekday pace: <span class="text-slate-200 font-mono font-semibold">${weekdayPace}/day</span></label>
+        <input id="weekday-pace-slider" type="range" min="1" max="6" step="1" value="${weekdayPace}" class="w-full">
+      </div>
+      <div>
+        <label class="field-label" for="sunday-pace-slider">${isParallel ? 'Sunday / holiday boost' : 'Sunday / holiday pace'}: <span class="text-slate-200 font-mono font-semibold">${sundayPace}/day</span></label>
+        <input id="sunday-pace-slider" type="range" min="1" max="8" step="1" value="${sundayPace}" class="w-full">
+      </div>
+      <div>
+        <label class="field-label" for="holidays-input">Upcoming holidays</label>
+        <input id="holidays-input" type="number" min="0" max="20" value="${holidaysUpcoming}" class="field-input">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      ${isParallel
+        ? renderPaceCard('2 lectures / day', 2, sundayPace, backlog, weekdayPace === 2) +
+          renderPaceCard('3 lectures / day', 3, sundayPace, backlog, weekdayPace === 3) +
+          renderPaceCard(`Custom · ${weekdayPace}/day`, weekdayPace, sundayPace, backlog, weekdayPace !== 2 && weekdayPace !== 3)
+        : renderPaceCard('3 lectures / day', 3, 3, backlog, weekdayPace === 3 && sundayPace === 3) +
+          renderPaceCard('4 lectures / day', 4, 4, backlog, weekdayPace === 4 && sundayPace === 4) +
+          renderPaceCard(`Custom · ${weekdayPace}/${sundayPace}`, weekdayPace, sundayPace, backlog, true)
+      }
+    </div>
+  `;
+}
+
+/* =========================================================
+   Render: Filter tabs + Chapters grid (Feature 4)
+========================================================= */
+function renderFilterTabs() {
+  const el = document.getElementById('filter-tabs');
+  const completedCount = state.chapters.filter(c => pendingCount(c) === 0).length;
+  const tabs = [
+    { id: 'all', label: 'All', badge: totalPendingAll() },
+    ...SUBJECT_ORDER.map(k => ({ id: k, label: SUBJECTS[k].short, badge: pendingBySubject(k), dot: SUBJECTS[k].dot })),
+    { id: 'completed', label: 'Cleared ✅', badge: completedCount },
+  ];
+  el.innerHTML = tabs.map(t => `
+    <button type="button" data-action="set-filter" data-filter="${t.id}"
+      class="tab-btn ${state.ui.filter === t.id ? 'tab-btn-active' : ''}">
+      ${t.dot ? `<span class="w-1.5 h-1.5 rounded-full ${t.dot}"></span>` : ''}
+      ${t.label}
+      <span class="font-mono text-[10px] text-slate-500">${t.badge}</span>
+    </button>
+  `).join('');
+}
+function getFilteredChapters() {
+  const f = state.ui.filter;
+  if (f === 'all') return state.chapters;
+  if (f === 'completed') return state.chapters.filter(c => pendingCount(c) === 0);
+  return state.chapters.filter(c => c.subject === f);
+}
+function renderChapterCard(ch) {
+  const total = ch.totalLectures;
+  const clearedCount = ch.clearedLectures.length;
+  const pct = total === 0 ? 0 : Math.round((clearedCount / total) * 100);
+  const isComplete = total > 0 && clearedCount === total;
+  const next = nextPendingNumber(ch);
+  const subj = SUBJECTS[ch.subject];
+
+  const pills = [];
+  for (let i = 1; i <= total; i++) {
+    const isCleared = ch.clearedLectures.includes(i);
+    const isNext = !isCleared && i === next;
+    const cls = isCleared ? 'pill pill-cleared' : isNext ? 'pill pill-next' : 'pill pill-pending';
+    pills.push(`
+      <button type="button" data-action="toggle-pill" data-chapter="${ch.id}" data-lecture="${i}"
+        class="${cls}" title="Lecture ${i}${isCleared ? ' · cleared' : isNext ? ' · next up' : ''}">
+        ${isCleared ? '<i data-lucide=\'check\' class=\'w-3.5 h-3.5\'></i>' : i}
+      </button>`);
+  }
+
+  return `
+    <div class="card p-5 ${isComplete ? 'border-emerald-400/30' : ''}">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="badge ${subj.badge}">${subj.label}</span>
+            ${ch.isOngoing ? `<span class="text-[10px] text-slate-500 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>Ongoing</span>` : ''}
+            ${isComplete
+              ? `<span class="badge bg-emerald-500/15 text-emerald-300">Cleared ✅</span>`
+              : `<span class="badge bg-white/5 text-slate-400">${pendingCount(ch)} Pending</span>`}
+          </div>
+          <h3 class="font-sans font-bold text-slate-100 truncate">${escapeHtml(ch.name)}</h3>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button type="button" data-action="edit-chapter" data-chapter="${ch.id}" class="text-slate-600 hover:text-indigo-300 transition-colors duration-150" title="Edit chapter">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+          </button>
+          <button type="button" data-action="delete-chapter" data-chapter="${ch.id}" class="text-slate-600 hover:text-rose-400 transition-colors duration-150" title="Delete chapter">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mb-3.5">
+        <div class="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r ${subj.barFrom} ${subj.barTo} transition-all duration-500" style="width:${pct}%;"></div>
+        </div>
+        <span class="text-xs text-slate-500 font-mono shrink-0">${clearedCount}/${total} (${pct}%)</span>
+      </div>
+
+      ${total > 0 ? `<div class="flex flex-wrap gap-1.5 mb-4">${pills.join('')}</div>` : `<p class="text-xs text-slate-600 mb-4">No lectures yet.</p>`}
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" data-action="clear-next" data-chapter="${ch.id}" class="btn-ghost text-xs" ${isComplete ? 'disabled' : ''}>
+          <i data-lucide="check" class="w-3.5 h-3.5"></i> Mark Next Done
+        </button>
+        <button type="button" data-action="add-one-lecture" data-chapter="${ch.id}" class="btn-ghost text-xs">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> +1 Total Lec
+        </button>
+      </div>
+    </div>
+  `;
+}
+function renderChapters() {
+  renderFilterTabs();
+  const grid = document.getElementById('chapters-grid');
+  const filter = state.ui.filter;
+  const list = getFilteredChapters();
+
+  if (SUBJECT_ORDER.includes(filter) && chaptersOf(filter).length === 0) {
+    grid.innerHTML = `
+      <div class="md:col-span-2 card-static rounded-2xl p-10 text-center">
+        <i data-lucide="folder-plus" class="w-8 h-8 text-slate-600 mx-auto mb-3"></i>
+        <p class="text-sm text-slate-400 mb-3">Not Started Yet — Add First Chapter</p>
+        <button type="button" data-action="add-chapter-for-subject" data-subject="${filter}" class="btn-primary text-xs">Add ${SUBJECTS[filter].label} chapter</button>
+      </div>`;
+    return;
+  }
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="md:col-span-2 card-static rounded-2xl p-10 text-center">
+        <p class="text-sm text-slate-400">${filter === 'completed' ? "Nothing cleared yet — keep going!" : "No chapters here yet."}</p>
+      </div>`;
+    return;
+  }
+  grid.innerHTML = list.map(renderChapterCard).join('');
+}
+
+/* =========================================================
+   Master render
+========================================================= */
+function render() {
+  renderHeroBar();
+  renderStatsRing();
+  renderLiveSyncHero();
+  renderTodayLog();
+  renderDailyAdder();
+  renderPlanner();
+  renderChapters();
+  lucide.createIcons();
+}
+
+/* =========================================================
+   Chapter modal (add / edit)
+========================================================= */
+let chapterModalMode = 'add';
+let chapterModalEditId = null;
+let adderPrefill = null; // { total, ongoing } set when opened from daily adder "+ New chapter"
+
+function openChapterModal({ mode, chapterId = null, prefillSubject = null }) {
+  chapterModalMode = mode;
+  chapterModalEditId = chapterId;
+  document.getElementById('chapter-modal-error').classList.add('hidden');
+
+  if (mode === 'edit') {
+    const ch = state.chapters.find(c => c.id === chapterId);
+    if (!ch) return;
+    document.getElementById('chapter-modal-title').textContent = 'Edit Chapter';
+    document.getElementById('cm-total-label').textContent = 'Total lectures';
+    document.getElementById('cm-subject').value = ch.subject;
+    document.getElementById('cm-name').value = ch.name;
+    document.getElementById('cm-total').value = ch.totalLectures;
+    document.getElementById('cm-ongoing').checked = ch.isOngoing;
+    document.getElementById('save-chapter-btn').textContent = 'Save Changes';
+  } else {
+    document.getElementById('chapter-modal-title').textContent = 'Add New Chapter';
+    document.getElementById('cm-total-label').textContent = 'Pending lectures';
+    document.getElementById('cm-subject').value = prefillSubject || 'physics';
+    document.getElementById('cm-name').value = '';
+    document.getElementById('cm-total').value = adderPrefill ? adderPrefill.total : '';
+    document.getElementById('cm-ongoing').checked = adderPrefill ? adderPrefill.ongoing : false;
+    document.getElementById('save-chapter-btn').textContent = 'Add Chapter';
+  }
+  document.getElementById('chapter-modal').classList.remove('hidden');
+}
+function closeChapterModal() {
+  document.getElementById('chapter-modal').classList.add('hidden');
+  adderPrefill = null;
+}
+function saveChapterFromModal() {
+  const errorEl = document.getElementById('chapter-modal-error');
+  errorEl.classList.add('hidden');
+  const subject = document.getElementById('cm-subject').value;
+  const name = document.getElementById('cm-name').value.trim();
+  const total = parseInt(document.getElementById('cm-total').value, 10);
+  const isOngoing = document.getElementById('cm-ongoing').checked;
+
+  if (!name) { errorEl.textContent = 'Chapter name is required.'; errorEl.classList.remove('hidden'); return; }
+  if (!Number.isFinite(total) || total < 1 || total > 200) { errorEl.textContent = 'Enter a valid lecture count (1–200).'; errorEl.classList.remove('hidden'); return; }
+
+  if (chapterModalMode === 'add') {
+    state.chapters.unshift(mkChapter(subject, name, total, [], isOngoing));
+    saveState();
+    closeChapterModal();
+    render();
+    showToast('Chapter added');
+  } else {
+    const ch = state.chapters.find(c => c.id === chapterModalEditId);
+    if (!ch) { closeChapterModal(); return; }
+    ch.subject = subject;
+    ch.name = name;
+    const before = ch.clearedLectures.length;
+    ch.clearedLectures = ch.clearedLectures.filter(n => n <= total);
+    ch.totalLectures = total;
+    ch.isOngoing = isOngoing;
+    saveState();
+    closeChapterModal();
+    render();
+    showToast(before !== ch.clearedLectures.length ? 'Chapter updated (some cleared lectures beyond new total were removed)' : 'Chapter updated');
+  }
+}
+
+/* =========================================================
+   Reset to default
+========================================================= */
+function resetToDefault() {
+  if (!confirm('This restores the original preloaded backlog and discards all your changes. Continue?')) return;
+  state = defaultState();
+  saveState();
+  render();
+  showToast('Restored default backlog data', 'info');
+}
+
+/* =========================================================
+   Event wiring
+========================================================= */
+document.getElementById('reset-default-btn').addEventListener('click', resetToDefault);
+document.getElementById('add-chapter-btn').addEventListener('click', () => {
+  const f = state.ui.filter;
+  openChapterModal({ mode: 'add', prefillSubject: SUBJECT_ORDER.includes(f) ? f : null });
+});
+
+document.addEventListener('click', (e) => {
+  const target = e.target;
+
+  if (target.id === 'watch-submit-btn') {
+    const subjSel = document.getElementById('watch-subject');
+    const chapSel = document.getElementById('watch-chapter');
+    const lecSel = document.getElementById('watch-lecture');
+    if (chapSel && chapSel.value && lecSel && lecSel.value) {
+      clearLecture(chapSel.value, parseInt(lecSel.value, 10), { log: true, confettiBurst: true });
+      const ch = state.chapters.find(c => c.id === chapSel.value);
+      showToast(`🔥 Logged L${lecSel.value} · ${ch ? ch.name : ''}`);
+    }
+    return;
+  }
+  if (target.id === 'adder-plus1-btn' || target.id === 'adder-plus2-btn') {
+    const count = target.id === 'adder-plus1-btn' ? 1 : 2;
+    const sel = document.getElementById('adder-chapter');
+    if (sel.value === '__new__') {
+      adderPrefill = { total: count, ongoing: true };
+      openChapterModal({ mode: 'add' });
+    } else {
+      addLecturesToChapter(sel.value, count);
+    }
+    return;
+  }
+  if (target.id === 'adder-holiday-btn') { logHolidayToday(); return; }
+
+  const btn = target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+
+  switch (action) {
+    case 'set-scenario':
+      state.settings.scenario = btn.dataset.scenario;
+      saveState(); render();
+      break;
+    case 'set-filter':
+      state.ui.filter = btn.dataset.filter;
+      saveState(); renderChapters(); lucide.createIcons();
+      break;
+    case 'toggle-pill':
+      toggleLecturePill(btn.dataset.chapter, parseInt(btn.dataset.lecture, 10));
+      break;
+    case 'clear-next':
+      clearNextForChapter(btn.dataset.chapter);
+      break;
+    case 'add-one-lecture':
+      addLecturesToChapter(btn.dataset.chapter, 1);
+      break;
+    case 'edit-chapter':
+      openChapterModal({ mode: 'edit', chapterId: btn.dataset.chapter });
+      break;
+    case 'delete-chapter':
+      deleteChapter(btn.dataset.chapter);
+      break;
+    case 'add-chapter-for-subject':
+      openChapterModal({ mode: 'add', prefillSubject: btn.dataset.subject });
+      break;
+    case 'undo-log':
+      unclearLecture(btn.dataset.chapter, parseInt(btn.dataset.lecture, 10));
+      break;
+    case 'close-chapter-modal':
+      closeChapterModal();
+      break;
+    case 'save-chapter':
+      saveChapterFromModal();
+      break;
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'watch-subject') { populateWatchChapterOptions(); populateWatchLectureOptions(); }
+  if (e.target.id === 'watch-chapter') { populateWatchLectureOptions(); }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'weekday-pace-slider') {
+    state.settings.weekdayPace = parseInt(e.target.value, 10);
+    saveState(); renderLiveSyncHero(); renderPlanner(); lucide.createIcons();
+  }
+  if (e.target.id === 'sunday-pace-slider') {
+    state.settings.sundayPace = parseInt(e.target.value, 10);
+    saveState(); renderLiveSyncHero(); renderPlanner(); lucide.createIcons();
+  }
+  if (e.target.id === 'holidays-input') {
+    const v = parseInt(e.target.value, 10);
+    state.settings.holidaysUpcoming = Number.isFinite(v) && v >= 0 ? v : 0;
+    saveState(); renderLiveSyncHero(); renderPlanner(); lucide.createIcons();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeChapterModal();
+});
+
+/* =========================================================
+   Init
+========================================================= */
+render();
+</script>
+</body>
+</html>
